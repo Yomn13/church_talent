@@ -16,9 +16,11 @@ class Command(BaseCommand):
             self.stdout.write('Teacher already exists')
 
         # 2. Create Student
+        student, created = User.objects.get_or_create(username='student1')
+        if created:
             student.set_password('student123')
             student.role = 'student'
-            student.first_name = 'Test Student' # Name goes to User.first_name
+            student.first_name = 'Test Student'  # Fixed: Name goes to User.first_name
             student.save()
             StudentProfile.objects.create(user=student, class_name='Faith Class', talent_point=5)
             self.stdout.write(self.style.SUCCESS('Created student: student1 / student123'))
