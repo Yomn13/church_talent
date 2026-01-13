@@ -11,6 +11,7 @@ router.register(r'attendance-records', AttendanceViewSet)
 urlpatterns = [
     path('', include(router.urls)),
     path('user/me/', get_my_info, name='user_info'),
-    path('attendance/', check_attendance, name='attendance'),
-    path('auth-token/', obtain_auth_token, name='api_token_auth'),
+    path('attendance-records/', AttendanceViewSet.as_view({'post': 'create'})),
+    path('attendance-records/<int:pk>/', AttendanceViewSet.as_view({'delete': 'destroy'})),
+    path('seed/', views.seed_users),
 ]
