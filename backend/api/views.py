@@ -166,3 +166,17 @@ def check_attendance(request):
     profile.save()
     
     return Response({'message': f'Attendance checked for {student_user.username} (+1 Talent)'})
+
+from django.http import JsonResponse
+from django.core.management import call_command
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def seed_users(request):
+    try:
+        call_command('create_test_users')
+        return JsonResponse({'status': 'success', 'message': 'Users created: teacher, student1, admin'})
+    except Exception as e:
+        return JsonResponse({'status': 'error', 'message': str(e)})
