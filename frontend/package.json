@@ -13,7 +13,7 @@
   },
   "homepage": "https://Yomn13.github.io/church_talent/",
   "dependencies": {
-    "axios": "^1.13.2",
+    "@supabase/supabase-js": "^2.90.1",
     "framer-motion": "^12.26.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

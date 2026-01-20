@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../api/axios';
+import { supabase } from '../supabaseClient';
 import TreeVisualizer from '../components/TreeVisualizer';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,6 +14,7 @@ const THEMES = {
 
 const Dashboard = () => {
     const [profile, setProfile] = useState(null);
+    const [pointHistory, setPointHistory] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
@@ -25,13 +26,34 @@ const Dashboard = () => {
 
     const fetchProfile = async () => {
         try {
-            const res = await api.get('/students/me/');
-            setProfile(res.data);
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                navigate('/login');
+                return;
+            }
+
+            const { data: profileData, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (error) throw error;
+
+            // Fetch History (Activities + Attendance)
+            const { data: activities } = await supabase.from('activity_logs').select('*').eq('user_id', user.id).eq('is_approved', true);
+            const { data: attendance } = await supabase.from('attendance').select('*').eq('user_id', user.id);
+
+            // Normalize history for display
+            const normalizedActivities = (activities || []).map(a => ({ type: 'activity', name: a.activity_type, date: a.created_at.split('T')[0], points: a.points }));
+            const normalizedAttendance = (attendance || []).map(a => ({ type: 'attendance', name: '출석', date: a.date, points: 1 }));
+
+            setPointHistory([...normalizedActivities, ...normalizedAttendance].sort((a, b) => new Date(a.date) - new Date(b.date)));
+            setProfile(profileData);
+
         } catch (err) {
             console.error(err);
-            if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-                navigate('/login');
-            }
+            navigate('/login');
         } finally {
             setLoading(false);
         }
@@ -39,7 +61,8 @@ const Dashboard = () => {
 
     const handleThemeChange = async (themeKey) => {
         try {
-            await api.patch(`/students/${profile.id}/`, { theme: themeKey });
+            const { error } = await supabase.from('profiles').update({ theme: themeKey }).eq('id', profile.id);
+            if (error) throw error;
             setProfile({ ...profile, theme: themeKey });
             setIsThemeModalOpen(false);
         } catch (err) {
@@ -147,7 +170,7 @@ const Dashboard = () => {
                 </div>
 
                 <div className="mt-8 text-center pb-8">
-                    <button onClick={() => { localStorage.removeItem('token'); navigate('/login'); }} className={`${currentTheme.text} opacity-60 font-bold hover:opacity-100 transition`}>로그아웃 👋</button>
+                    <button onClick={async () => { await supabase.auth.signOut(); navigate('/login'); }} className={`${currentTheme.text} opacity-60 font-bold hover:opacity-100 transition`}>로그아웃 👋</button>
                 </div>
             </div>
 
@@ -194,15 +217,15 @@ const Dashboard = () => {
                         <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white rounded-[2rem] p-6 w-full max-w-lg shadow-2xl relative z-10 max-h-[80vh] flex flex-col">
                             <h2 className="text-2xl font-black mb-2 text-gray-800">내 활동 기록 📜</h2>
                             <div className="overflow-y-auto flex-1 space-y-3 pr-2 custom-scrollbar mt-4">
-                                {(profile.point_history || []).length === 0 ? <div className="text-center text-gray-400 py-10 font-bold">기록이 없습니다.</div> :
-                                    (profile.point_history || []).slice().reverse().map((log, idx) => (
+                                {pointHistory.length === 0 ? <div className="text-center text-gray-400 py-10 font-bold">기록이 없습니다.</div> :
+                                    pointHistory.slice().reverse().map((log, idx) => (
                                         <div key={idx} className="flex items-center bg-gray-50 p-4 rounded-2xl border border-gray-100">
                                             <div className="text-2xl mr-4">{log.type === 'attendance' ? '📅' : '🙏'}</div>
                                             <div className="flex-1">
                                                 <div className="font-bold text-gray-800">{log.name}</div>
                                                 <div className="text-xs text-gray-500">{log.date}</div>
                                             </div>
-                                            <div className="font-black text-nature-green text-lg">+1</div>
+                                            <div className="font-black text-nature-green text-lg">+{log.points}</div>
                                         </div>
                                     ))
                                 }

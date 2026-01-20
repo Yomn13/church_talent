@@ -1,29 +1,38 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
+import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
 
 const Login = () => {
-    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
-            const response = await api.post('/auth-token/', { username, password });
-            const { token } = response.data;
-            localStorage.setItem('token', token);
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
 
-            // Check User Role
-            const userRes = await api.get('/user/me/');
-            if (userRes.data.role === 'teacher') {
+            if (error) throw error;
+
+            // Check role from profiles table
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('role')
+                .eq('id', data.user.id)
+                .single();
+
+            if (profile?.role === 'teacher') {
                 navigate('/teacher');
             } else {
                 navigate('/dashboard');
             }
         } catch (error) {
-            alert('로그인 실패: 아이디와 비밀번호를 확인하세요.');
+            console.error(error);
+            alert('로그인 실패: 이메일과 비밀번호를 확인하세요.');
         }
     };
 
@@ -46,13 +55,13 @@ const Login = () => {
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-nature-brown mb-2 font-bold text-lg">아이디</label>
+                        <label className="block text-nature-brown mb-2 font-bold text-lg">이메일</label>
                         <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-gray-200 focus:border-nature-green outline-none transition text-lg font-bold"
-                            placeholder="아이디를 입력하세요"
+                            placeholder="이메일을 입력하세요"
                         />
                     </div>
                     <div>

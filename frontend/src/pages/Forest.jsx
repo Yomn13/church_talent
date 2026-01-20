@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../api/axios';
+import { supabase } from '../supabaseClient';
 import TreeVisualizer from '../components/TreeVisualizer';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -11,8 +11,15 @@ const Forest = () => {
     useEffect(() => {
         const fetchStudents = async () => {
             try {
-                const res = await api.get('/students/');
-                setStudents(res.data);
+                // Fetch profiles with role 'student'
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('role', 'student')
+                    .order('talent_point', { ascending: false }); // Optional: Rank by points
+
+                if (error) throw error;
+                setStudents(data);
             } catch (err) {
                 console.error(err);
             }
@@ -38,7 +45,7 @@ const Forest = () => {
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
                         transition={{ delay: index * 0.1 }}
-                        key={student.username}
+                        key={student.id}
                         className="bg-white p-6 rounded-[2.5rem] shadow-xl flex flex-col items-center border-4 border-white ring-4 ring-green-50 relative"
                     >
                         <div className="absolute -top-4 bg-nature-yellow px-4 py-1 rounded-full font-black text-nature-brown shadow-sm border-2 border-white">

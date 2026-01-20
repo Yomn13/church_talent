@@ -1,30 +1,62 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../api/axios';
+import { supabase } from '../supabaseClient';
 import { motion } from 'framer-motion';
 
 const UploadActivity = () => {
     const [activityType, setActivityType] = useState('prayer');
     const [content, setContent] = useState('');
     const [file, setFile] = useState(null);
+    const [uploading, setUploading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const formData = new FormData();
-        formData.append('activity_type', activityType);
-        formData.append('content', content);
-        if (file) formData.append('photo', file);
-
+        setUploading(true);
         try {
-            await api.post('/activities/', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                alert('로그인이 필요합니다.');
+                navigate('/login');
+                return;
+            }
+
+            let photoUrl = null;
+            if (file) {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage
+                    .from('activities')
+                    .upload(fileName, file);
+
+                if (uploadError) throw uploadError;
+
+                // Get public URL
+                const { data: { publicUrl } } = supabase.storage.from('activities').getPublicUrl(fileName);
+                photoUrl = publicUrl;
+            }
+
+            const { error: insertError } = await supabase
+                .from('activity_logs')
+                .insert([
+                    {
+                        user_id: user.id,
+                        activity_type: activityType,
+                        content: content,
+                        photo_url: photoUrl,
+                        is_approved: false
+                    }
+                ]);
+
+            if (insertError) throw insertError;
+
             alert('🎉 활동이 올라갔어요! 선생님이 곧 봐주실 거예요.');
             navigate('/');
         } catch (err) {
-            alert('업로드 실패');
+            alert('업로드 실패: ' + err.message);
             console.error(err);
+        } finally {
+            setUploading(false);
         }
     };
 
@@ -82,9 +114,10 @@ const UploadActivity = () => {
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             type="submit"
-                            className="flex-1 py-4 bg-nature-green text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#15803d]"
+                            disabled={uploading}
+                            className={`flex-1 py-4 bg-nature-green text-white rounded-2xl font-black text-lg shadow-[0_4px_0_0_#15803d] ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
-                            다 했어요! 👍
+                            {uploading ? '올리는 중...' : '다 했어요! 👍'}
                         </motion.button>
                     </div>
                 </form>
