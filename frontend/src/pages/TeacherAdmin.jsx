@@ -201,19 +201,27 @@ const TeacherAdmin = () => {
         try {
             if (currentStudent) {
                 // Update Profile
-                await supabase.from('profiles').update({
-                    username: formData.username,
+                const { error } = await supabase.from('profiles').update({
                     class_name: formData.class_name,
                     talent_point: formData.talent_point
+                    // username is not editable easily because it's linked to auth email, let's keep it fixed or complex to change
                 }).eq('id', currentStudent.id);
+                if (error) throw error;
             } else {
-                alert("학생 추가는 '새 멤버 가입' 페이지를 이용해주세요 (로그아웃 후 회원가입).");
-                return;
+                // Create New Student via RPC
+                const { data, error } = await supabase.rpc('create_student', {
+                    username: formData.username,
+                    password: formData.password,
+                    class_name: formData.class_name,
+                    talent_point: formData.talent_point
+                });
+
+                if (error) throw error;
             }
             setIsStudentModalOpen(false);
             fetchData();
             alert('저장되었습니다.');
-        } catch (err) { alert('저장 실패'); }
+        } catch (err) { alert('저장 실패: ' + err.message); }
     };
 
     const openStudentModal = (student = null) => {
@@ -295,11 +303,35 @@ const TeacherAdmin = () => {
                             <h2 className="text-2xl font-black mb-6 text-gray-800">{currentStudent ? '학생 수정' : '학생 등록'}</h2>
                             <form onSubmit={handleStudentSave} className="space-y-4">
                                 <input type="text" placeholder="반" value={formData.class_name || ''} onChange={e => setFormData({ ...formData, class_name: e.target.value })} className="w-full bg-gray-50 border p-3 rounded-xl font-bold" />
-                                <input type="text" placeholder="아이디/이름" value={formData.username || ''} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full bg-gray-50 border p-3 rounded-xl font-bold" required />
+                                <input type="text" placeholder="아이디 (ID)" value={formData.username || ''} onChange={e => setFormData({ ...formData, username: e.target.value })} className="w-full bg-gray-50 border p-3 rounded-xl font-bold" required disabled={!!currentStudent} />
+
+                                <div className="relative">
+                                    <input type="text" placeholder={currentStudent ? "비밀번호 (변경시에만 입력)" : "비밀번호"} value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} className="w-full bg-gray-50 border p-3 rounded-xl font-bold" required={!currentStudent} />
+                                </div>
+
                                 <input type="number" placeholder="달란트" value={formData.talent_point} onChange={e => setFormData({ ...formData, talent_point: parseInt(e.target.value) || 0 })} className="w-full bg-gray-50 border p-3 rounded-xl font-bold" />
+
+                                {/* Password Reset Button for Existing Students */}
+                                {currentStudent && formData.password && (
+                                    <button type="button" onClick={async () => {
+                                        if (!window.confirm('비밀번호를 변경하시겠습니까?')) return;
+                                        try {
+                                            const { error } = await supabase.rpc('update_student_password', {
+                                                target_user_id: currentStudent.id,
+                                                new_password: formData.password
+                                            });
+                                            if (error) throw error;
+                                            alert('비밀번호가 변경되었습니다.');
+                                            setFormData({ ...formData, password: '' });
+                                        } catch (err) { alert('변경 실패: ' + err.message); }
+                                    }} className="w-full py-2 bg-red-100 text-red-500 rounded-xl font-bold text-sm">
+                                        비밀번호만 변경하기 🔒
+                                    </button>
+                                )}
+
                                 <div className="flex gap-3 mt-4">
                                     <button type="button" onClick={() => setIsStudentModalOpen(false)} className="flex-1 py-3 bg-gray-100 rounded-xl font-bold">취소</button>
-                                    <button type="submit" className="flex-1 py-3 bg-nature-green text-white rounded-xl font-bold">저장</button>
+                                    <button type="submit" className="flex-1 py-3 bg-nature-green text-white rounded-xl font-bold">{currentStudent ? '정보 수정' : '새 친구 등록'}</button>
                                 </div>
                             </form>
                         </div>

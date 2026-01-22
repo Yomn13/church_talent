@@ -11,8 +11,11 @@ const Login = () => {
     const handleLogin = async (e) => {
         e.preventDefault();
         try {
+            // Append dummy domain for ID-based login
+            const emailToUse = email.includes('@') ? email : `${email}@church.com`;
+
             const { data, error } = await supabase.auth.signInWithPassword({
-                email,
+                email: emailToUse,
                 password,
             });
 
@@ -55,13 +58,13 @@ const Login = () => {
 
                 <form onSubmit={handleLogin} className="space-y-6">
                     <div>
-                        <label className="block text-nature-brown mb-2 font-bold text-lg">이메일</label>
+                        <label className="block text-nature-brown mb-2 font-bold text-lg">아이디 (ID)</label>
                         <input
-                            type="email"
-                            value={email}
+                            type="text"
+                            value={email} // keeping variable name 'email' for state but it stores username
                             onChange={(e) => setEmail(e.target.value)}
                             className="w-full p-4 rounded-2xl bg-gray-50 border-2 border-gray-200 focus:border-nature-green outline-none transition text-lg font-bold"
-                            placeholder="이메일을 입력하세요"
+                            placeholder="아이디를 입력하세요"
                         />
                     </div>
                     <div>
