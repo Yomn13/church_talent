@@ -26,7 +26,7 @@ const Login = () => {
                 .from('profiles')
                 .select('role')
                 .eq('id', data.user.id)
-                .single();
+                .maybeSingle(); // Use maybeSingle to avoid error if no profile exists
 
             if (profile?.role === 'teacher') {
                 navigate('/teacher');

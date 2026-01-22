@@ -38,7 +38,10 @@ const FRUIT_CONFIG = {
 };
 
 const TreeVisualizer = ({ profile, theme = 'default' }) => {
-    const { talent_point: talentCount, point_history } = profile || { talent_point: 0, point_history: [] };
+    // Determine talent points and history safely
+    const talentCount = profile?.talent_point || 0;
+    // Ensure point_history is an array. If it's undefined, default to []
+    const point_history = Array.isArray(profile?.point_history) ? profile.point_history : [];
     const config = SEASON_CONFIG[theme] || SEASON_CONFIG.default;
     const fruitsConfig = FRUIT_CONFIG[theme] || FRUIT_CONFIG.default;
 

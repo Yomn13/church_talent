@@ -133,7 +133,8 @@ const Dashboard = () => {
             </div>
 
             <div className="px-4">
-                <TreeVisualizer profile={profile} theme={profile.theme} />
+                {/* Safe pass of profile with history */}
+                <TreeVisualizer profile={{ ...profile, point_history: pointHistory }} theme={profile.theme} />
 
                 {/* Controls */}
                 <div className="mt-10 grid grid-cols-2 gap-4 max-w-md mx-auto">
