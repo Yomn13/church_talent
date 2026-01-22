@@ -38,7 +38,17 @@ const Dashboard = () => {
                 .eq('id', user.id)
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                if (error.code === 'PGRST116') {
+                    alert('프로필을 찾을 수 없습니다. 선생님께 문의해주세요. (Profile Missing)');
+                } else {
+                    console.error('Error fetching profile:', error);
+                    alert('데이터를 불러오는데 실패했습니다: ' + error.message);
+                }
+                // Don't redirect immediately so they can see the error, or redirect to login after alert
+                // navigate('/login'); 
+                return;
+            }
 
             // Fetch History (Activities + Attendance)
             const { data: activities } = await supabase.from('activity_logs').select('*').eq('user_id', user.id).eq('is_approved', true);
@@ -53,6 +63,7 @@ const Dashboard = () => {
 
         } catch (err) {
             console.error(err);
+            alert('알 수 없는 오류가 발생했습니다.');
             navigate('/login');
         } finally {
             setLoading(false);
