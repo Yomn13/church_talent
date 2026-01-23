@@ -121,28 +121,17 @@ const TeacherAdmin = () => {
     const handleDeleteLog = async (log) => {
         if (!window.confirm('정말 삭제하시겠습니까? (달란트도 차감됩니다)')) return;
         try {
-            // Deleting might need manual point adjustment unless we have a trigger for DELETE.
-            // Our schema plan didn't explicitly include DELETE trigger for point decrement.
-            // Let's implement manual decrement here for safety or assume trigger exists (it's better to add trigger later).
-            // For now: Just delete. The points might desync if we don't handle it.
-            // HACK: Manually decrement.
+            // Just delete. The Database Trigger 'decrement_points_on_delete' will handle the points.
             const table = log.type === 'attendance' ? 'attendance' : 'activity_logs';
             await supabase.from(table).delete().eq('id', log.id);
 
-            // Manually decrement points
-            const { data: profile } = await supabase.from('profiles').select('talent_point').eq('id', currentStudent.id).single();
-            if (profile) {
-                await supabase.from('profiles').update({ talent_point: Math.max(0, profile.talent_point - log.points) }).eq('id', currentStudent.id);
-            }
-
             // Refresh
-            // Update local state if needed or re-fetch
             const { data: updatedStudent } = await supabase.from('profiles').select('*').eq('id', currentStudent.id).single();
             setCurrentStudent(updatedStudent);
 
             await refreshStudentHistory(currentStudent.id);
             fetchData();
-        } catch (err) { alert('삭제 실패'); }
+        } catch (err) { alert('삭제 실패: ' + err.message); }
     };
 
     const handleAddLog = async (e) => {
